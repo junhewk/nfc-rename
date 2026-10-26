@@ -5,20 +5,103 @@ struct NFCRenameApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
-        WindowGroup {
-            DropZoneView()
-                .background(WindowAccessor())
+        // The drop zone window is owned by AppDelegate: SwiftUI skips a WindowGroup's
+        // default window when the app is launched by a Finder Services request
+        Settings {
+            EmptyView()
         }
-        .windowStyle(.hiddenTitleBar)
-        .defaultSize(width: 160, height: 160)
-        .windowResizability(.contentSize)
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("파일 선택…") { AppModel.shared.chooseFiles() }
+                    .keyboardShortcut("o")
+                Button("NFD 여부 확인…") { AppModel.shared.chooseFiles(checkOnly: true) }
+                    .keyboardShortcut("o", modifiers: [.command, .option])
+                Divider()
+                RecursiveToggle()
+            }
+        }
+    }
+}
+
+struct RecursiveToggle: View {
+    @AppStorage(AppModel.recursiveKey) private var recursive = true
+
+    var body: some View {
+        Toggle("하위 폴더 포함", isOn: $recursive)
     }
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var window: NSWindow?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        let window = DropZoneWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 160, height: 160),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = NSHostingView(rootView: DropZoneView().background(WindowAccessor()))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        self.window = window
+
+        // Finder → right-click → Services → "Convert Filenames to NFC" / "Check Filename Normalization"
+        // (see NSServices in Info.plist)
+        NSApp.servicesProvider = self
+        NSUpdateDynamicServices()
+    }
+
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
         true
     }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        window?.makeKeyAndOrderFront(nil)
+        return true
+    }
+
+    @objc func convertFilenamesToNFC(
+        _ pasteboard: NSPasteboard,
+        userData: String?,
+        error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
+        guard let urls = fileURLs(from: pasteboard, error: error) else { return }
+        AppModel.shared.convert(urls)
+    }
+
+    @objc func checkFilenameNormalization(
+        _ pasteboard: NSPasteboard,
+        userData: String?,
+        error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
+        guard let urls = fileURLs(from: pasteboard, error: error) else { return }
+        AppModel.shared.check(urls)
+    }
+
+    private func fileURLs(
+        from pasteboard: NSPasteboard,
+        error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) -> [URL]? {
+        let urls = pasteboard.readObjects(
+            forClasses: [NSURL.self],
+            options: [.urlReadingFileURLsOnly: true]
+        ) as? [URL] ?? []
+
+        guard !urls.isEmpty else {
+            error.pointee = "No files were provided." as NSString
+            return nil
+        }
+
+        // Results show in the drop zone, so bring it forward
+        window?.orderFrontRegardless()
+        return urls
+    }
+}
+
+final class DropZoneWindow: NSWindow {
+    // Borderless windows can't become key by default, which blocks the ⌘ shortcuts
+    override var canBecomeKey: Bool { true }
 }
 
 struct WindowAccessor: NSViewRepresentable {

@@ -1,0 +1,3 @@
+/* Finder right-click → Services menu item */
+"Convert Filenames to NFC" = "파일 이름을 NFC로 변환";
+"Check Filename Normalization" = "파일 이름 NFD/NFC 확인";

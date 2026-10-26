@@ -20,28 +20,43 @@ class NFCConverter {
     private let fileManager = FileManager.default
 
     func convert(urls: [URL], recursive: Bool) -> ConversionSummary {
-        var results: [RenameResult] = []
+        ConversionSummary(results: paths(for: urls, recursive: recursive).map { convertSingle(path: $0) })
+    }
+
+    /// Paths whose filename is NFD, without renaming anything.
+    func findNFD(urls: [URL], recursive: Bool) -> (nfd: [String], total: Int) {
+        let all = paths(for: urls, recursive: recursive)
+        return (all.filter { needsConversion(($0 as NSString).lastPathComponent) }, all.count)
+    }
+
+    func needsConversion(_ filename: String) -> Bool {
+        // Compare raw UTF-8 bytes — Swift String == treats NFD and NFC as equal
+        filename.data(using: .utf8) != filename.precomposedStringWithCanonicalMapping.data(using: .utf8)
+    }
+
+    /// Dropped items plus (optionally) their contents, children before parents.
+    private func paths(for urls: [URL], recursive: Bool) -> [String] {
+        var paths: [String] = []
 
         for url in urls {
             let path = url.path
             if recursive {
                 var isDir: ObjCBool = false
                 if fileManager.fileExists(atPath: path, isDirectory: &isDir), isDir.boolValue {
-                    results.append(contentsOf: convertRecursive(directory: path))
+                    paths.append(contentsOf: contents(of: path))
                 }
             }
-            results.append(convertSingle(path: path))
+            paths.append(path)
         }
 
-        return ConversionSummary(results: results)
+        return paths
     }
 
     func convertSingle(path: String) -> RenameResult {
         let filename = (path as NSString).lastPathComponent
         let nfcFilename = filename.precomposedStringWithCanonicalMapping
 
-        // Compare raw UTF-8 bytes — Swift String == treats NFD and NFC as equal
-        guard filename.data(using: .utf8) != nfcFilename.data(using: .utf8) else {
+        guard needsConversion(filename) else {
             return RenameResult(originalPath: path, newName: nil, error: nil)
         }
 
@@ -64,19 +79,22 @@ class NFCConverter {
         return RenameResult(originalPath: path, newName: nfcFilename, error: nil)
     }
 
-    private func convertRecursive(directory: String) -> [RenameResult] {
+    private func contents(of directory: String) -> [String] {
         guard let enumerator = fileManager.enumerator(atPath: directory) else { return [] }
 
         var allPaths: [String] = []
         while let relative = enumerator.nextObject() as? String {
-            // Skip hidden files
-            if (relative as NSString).lastPathComponent.hasPrefix(".") { continue }
+            // Skip hidden files, and don't descend into hidden folders like .git
+            if (relative as NSString).lastPathComponent.hasPrefix(".") {
+                enumerator.skipDescendants()
+                continue
+            }
             allPaths.append((directory as NSString).appendingPathComponent(relative))
         }
 
         // Sort deepest paths first — renaming parent before children invalidates child paths
         allPaths.sort { $0.components(separatedBy: "/").count > $1.components(separatedBy: "/").count }
 
-        return allPaths.map { convertSingle(path: $0) }
+        return allPaths
     }
 }
