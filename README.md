@@ -1,6 +1,6 @@
 # NFCRename
 
-A lightweight macOS utility that checks and converts NFD (decomposed) Unicode filenames to NFC (composed) — from a floating drop zone or straight from Finder's right-click menu.
+A lightweight macOS menu bar utility that checks and converts NFD (decomposed) Unicode filenames to NFC (composed) — from the menu bar, Finder's right-click menu, or a floating drop zone.
 
 macOS stores Korean filenames in NFD form, which causes broken filenames (e.g. `ㅎㅏㄴㄱㅡㄹ` instead of `한글`) when they're transferred to Windows, Linux, NAS devices, or some cloud services. NFCRename finds and fixes them.
 
@@ -16,6 +16,14 @@ The app is signed with a Developer ID and notarized by Apple, so it opens normal
 
 ## Usage
 
+### Menu bar
+
+NFCRename lives in the menu bar (no Dock icon).
+
+- **Drop files or folders on the menu bar icon** → converted to NFC (hold **⌥** to check only)
+- **Click the icon** for: choose files to convert (⌘O) or check (⌥⌘O), include subfolders, show/hide the drop zone, open at login, quit
+- The icon briefly shows ✓ or ! after each conversion or check, and the menu keeps the latest result — after a check, convert the NFD items from there in one click
+
 ### Finder right-click menu
 
 Select files or folders in Finder, right-click, and choose from **Services** (or **Quick Actions**):
@@ -25,17 +33,17 @@ Select files or folders in Finder, right-click, and choose from **Services** (or
 | **Convert Filenames to NFC** | 파일 이름을 NFC로 변환 | Renames NFD names to NFC |
 | **Check Filename Normalization** | 파일 이름 NFD/NFC 확인 | Reports how many names are NFD — renames nothing |
 
-The result appears in the drop zone. After a check that found NFD names, hover over the drop zone and click **변환** to convert them.
+The result appears on the menu bar icon and in the drop zone (if shown). After a check that found NFD names, convert them from the menu bar menu or the drop zone's **변환** button.
 
 > If the items don't show up right after installing, open NFCRename once. If they're still missing, enable them in **System Settings → Keyboard → Keyboard Shortcuts… → Services → Files and Folders**.
 
 ### Drop zone
 
-A small always-on-top window that remembers its position.
+An optional small always-on-top window that remembers its position. Hide it with its **×** button and bring it back from the menu bar (**드롭 영역 표시**) or by opening the app again.
 
 - **Drop** files or folders → converted to NFC
 - **Hold ⌥ while dropping** → check only, nothing is renamed
-- **Hover** for quick controls: subfolder toggle, file picker, quit
+- **Hover** for quick controls: subfolder toggle, file picker, hide
 - **Right-click** the drop zone for the same actions
 - **⌘O** choose files to convert · **⌥⌘O** choose files to check
 

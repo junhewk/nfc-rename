@@ -5,6 +5,7 @@ import Combine
 final class AppModel: ObservableObject {
     static let shared = AppModel()
     static let recursiveKey = "recursive"
+    static let showsDropZoneKey = "showsDropZone"
 
     enum Status: Equatable {
         case idle
@@ -47,12 +48,18 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var status: Status = .idle
 
+    /// The floating drop zone is optional — everything is also in the menu bar.
+    @Published var showsDropZone: Bool {
+        didSet { UserDefaults.standard.set(showsDropZone, forKey: Self.showsDropZoneKey) }
+    }
+
     private let converter = NFCConverter()
     private let queue = DispatchQueue(label: "nfc-rename.convert", qos: .userInitiated)
     private var resetWork: DispatchWorkItem?
 
     private init() {
-        UserDefaults.standard.register(defaults: [Self.recursiveKey: true])
+        UserDefaults.standard.register(defaults: [Self.recursiveKey: true, Self.showsDropZoneKey: true])
+        showsDropZone = UserDefaults.standard.bool(forKey: Self.showsDropZoneKey)
     }
 
     func convert(_ urls: [URL]) {

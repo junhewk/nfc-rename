@@ -1,3 +1,4 @@
+import Combine
 import SwiftUI
 
 @main
@@ -33,6 +34,8 @@ struct RecursiveToggle: View {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var window: NSWindow?
+    private var statusBar: StatusBarController?
+    private var dropZoneObserver: AnyCancellable?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let window = DropZoneWindow(
@@ -43,8 +46,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
         window.contentView = NSHostingView(rootView: DropZoneView().background(WindowAccessor()))
         window.center()
-        window.makeKeyAndOrderFront(nil)
         self.window = window
+
+        statusBar = StatusBarController()
+
+        dropZoneObserver = AppModel.shared.$showsDropZone.sink { [weak window] shows in
+            if shows {
+                window?.orderFrontRegardless()
+            } else {
+                window?.orderOut(nil)
+            }
+        }
 
         // Finder → right-click → Services → "Convert Filenames to NFC" / "Check Filename Normalization"
         // (see NSServices in Info.plist)
@@ -53,10 +65,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        true
+        // Lives in the menu bar even when the drop zone is hidden
+        false
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        // Opening the app again from Finder or Spotlight brings the drop zone back
+        AppModel.shared.showsDropZone = true
         window?.makeKeyAndOrderFront(nil)
         return true
     }
@@ -93,8 +108,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             return nil
         }
 
-        // Results show in the drop zone, so bring it forward
-        window?.orderFrontRegardless()
+        // Results show in the drop zone if it's open, and always on the menu bar icon
+        if AppModel.shared.showsDropZone {
+            window?.orderFrontRegardless()
+        }
         return urls
     }
 }

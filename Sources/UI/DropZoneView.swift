@@ -61,6 +61,7 @@ struct DropZoneView: View {
             Button("NFD 여부 확인…") { model.chooseFiles(checkOnly: true) }
             Toggle("하위 폴더 포함", isOn: $recursive)
             Divider()
+            Button("드롭 영역 숨기기") { model.showsDropZone = false }
             Button("종료") { NSApp.terminate(nil) }
         }
         .animation(.easeInOut(duration: 0.15), value: isTargeted)
@@ -74,7 +75,9 @@ struct DropZoneView: View {
         VStack {
             HStack {
                 Spacer()
-                controlButton("xmark", help: "종료") { NSApp.terminate(nil) }
+                controlButton("xmark", help: "드롭 영역 숨기기 — 메뉴 막대에서 다시 열 수 있음") {
+                    model.showsDropZone = false
+                }
             }
 
             Spacer()
